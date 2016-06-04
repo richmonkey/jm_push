@@ -4,4 +4,3 @@
 *.pem
 .idea/
 /config.py
-/push/config.py
