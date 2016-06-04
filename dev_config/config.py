@@ -40,7 +40,7 @@ XG_ACCESS_ID = 2100103204
 XG_SECRET_KEY = "53c1be217035aa75c1ccb5770b5df9f9"
 
 #ios push
-P12 = "im_demo.p12"
+P12 = "p12/apns_dev_cert.p12"
 P12_SECRET = ""
 
 GCM_SENDER_ID = 0

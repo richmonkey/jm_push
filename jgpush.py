@@ -25,7 +25,7 @@ class JGPush:
         return app
 
     @classmethod
-    def send(cls, app_key, app_secret, device_token, title, content):
+    def send(cls, app_key, app_secret, device_tokens, title, content):
         obj = {
             "platform":"android",
             "notification": {
@@ -35,30 +35,26 @@ class JGPush:
                 },
             },
             "audience" : {
-                "registration_id" : [ device_token ]
+                "registration_id" : device_tokens
             }
         }
 
         auth = base64.b64encode(app_key + ":" + app_secret)
-        print auth
         headers = {'Content-Type': 'application/json',
                    'Authorization': 'Basic ' + auth}
 
         data = json.dumps(obj)
         res = cls.session.post(JG_URL, data=data, headers=headers, timeout=60)
         if res.status_code != 200:
-            logging.error("send jg message error")
+            logging.error("send jg message error:%s", res.status_code)
         else:
-            obj = json.loads(res.content)
-            if obj.has_key("code") and obj["code"] == 0:
-                logging.debug("send jg message success")
-            else:
-                logging.error("send jg message error:%s", res.content)                
+            logging.debug("send jg message success:%s", res.content)
+                          
         print res.content
         
 
     @classmethod
-    def push(cls, appid, appname, token, content):
+    def push(cls, appid, appname, tokens, content):
         app = cls.get_app(appid)
         if app is None:
             logging.warning("can't read jg app secret")
@@ -67,8 +63,10 @@ class JGPush:
         jg_app_key = app["jg_app_key"]
         jg_app_secret = app["jg_app_secret"]
         logging.debug("jg app secret:%s", jg_app_secret)
-        cls.send(jg_app_key, jg_app_secret, token, appname, content)
-  
+        logging.debug("send jg push:%s", content)
+        for i in range(0, len(tokens), 1000):
+            t = tokens[i:i+1000]
+            cls.send(jg_app_key, jg_app_secret, t, appname, content)
         
     
 if __name__ == "__main__":
@@ -77,5 +75,5 @@ if __name__ == "__main__":
     APP_SECRET = ""
     token = "18071adc030e776c98d"
 
-    JGPush.send(APP_KEY, APP_SECRET, token, "test", "测试极光推送")
+    JGPush.send(APP_KEY, APP_SECRET, [token], "test", "测试极光推送")
 
