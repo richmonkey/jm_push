@@ -4,53 +4,27 @@ DEBUG=True
 
 SANDBOX=True
 
-CHAN_REDIS_HOST="192.168.33.10"
-CHAN_REDIS_PORT=6379
-CHAN_REDIS_DB=0
-CHAN_REDIS_PASSWORD=""
-
 REDIS_HOST="192.168.33.10"
 REDIS_PORT=6379
 REDIS_DB=0
 REDIS_PASSWORD=""
-
-MYSQL_HOST = "192.168.33.10"
-MYSQL_PORT = 3306
-MYSQL_AUTOCOMMIT = True
-MYSQL_CHARSET = 'utf8'
-
-MYSQL_USER = "im"
-MYSQL_PASSWD = "123456"
-
-
-MYSQL_IM_DATABASE = "im"
-
-
-# host,port,user,password,db,auto_commit,charset
-MYSQL_IM = (MYSQL_HOST, MYSQL_PORT, MYSQL_USER, MYSQL_PASSWD, MYSQL_IM_DATABASE, MYSQL_AUTOCOMMIT, MYSQL_CHARSET)
-
 
 APPNAME = "IMDemo"
 APPID = 7
 APPKEY = "sVDIlIiDUm7tWPYWhi6kfNbrqui3ez44"
 APPSECRET = "0WiCxAU1jh76SbgaaFC7qIaBPm2zkyM1"
 
-#信鸽推送
-XG_ACCESS_ID = 2100103204
-XG_SECRET_KEY = "53c1be217035aa75c1ccb5770b5df9f9"
+PUSH_CERTS = {
+    'io.gobelieve.demo':{
+        'name':"IMDemo",
+        'ios':{
+            'p12': "p12/apns_dev_cert.p12",
+            'secret': ""
+        },
+        'jpush':{
+            'app_key':'',
+            'app_secret':'',
+        }
+    }
+}
 
-#ios push
-P12 = "p12/apns_dev_cert.p12"
-P12_SECRET = ""
-
-GCM_SENDER_ID = 0
-GCM_API_KEY = "AIzaSyDj7XHkwFoox6Ip04DcOnW_RG4IIQcPjvg"
-
-HW_APPID = 10417737
-HW_APP_SECRET = "80ungj5bjx00g269oeqs9t2fnkyhe5wr"
-
-MI_APPID = 0
-MI_APP_SECRET = "Ef5FbgNVYkYMZTcWKMcFMw=="
-
-JG_APP_KEY = ""
-JG_APP_SECRET = ""

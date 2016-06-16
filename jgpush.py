@@ -14,14 +14,17 @@ class JGPush:
     mysql = None
         
     @classmethod
-    def get_app(cls, appid):
+    def get_app(cls, bundle_id):
         now = int(time.time())
+        cert = config.PUSH_CERTS.get(bundle_id, None)
+        if cert is None:
+            return None
+
         app = {}
         app["timestamp"] = now
-        app["jg_app_key"] = config.JG_APP_KEY
-        app["jg_app_secret"] = config.JG_APP_SECRET
-        app["appid"] = appid
-
+        app['jg_app_key'] = cert['jpush']['app_key']
+        app["jg_app_secret"] = cert['jpush']['app_secret']
+        app["bundle_id"] = bundle_id
         return app
 
     @classmethod
@@ -54,8 +57,8 @@ class JGPush:
         
 
     @classmethod
-    def push(cls, appid, appname, tokens, content):
-        app = cls.get_app(appid)
+    def push(cls, bundle_id, appname, tokens, content):
+        app = cls.get_app(bundle_id)
         if app is None:
             logging.warning("can't read jg app secret")
             return False
