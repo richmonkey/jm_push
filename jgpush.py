@@ -27,7 +27,7 @@ class JGPush:
     @classmethod
     def send(cls, app_key, app_secret, device_tokens, title, content):
         obj = {
-            "platform":"android",
+            "platform":["android"],
             "notification": {
                 "android": {
                     "alert": content,
