@@ -139,7 +139,20 @@ def handle_im_message(msg):
     group_id = obj["group_id"] if obj.has_key("group_id") else 0
 
     sender_name = User.get_user_name(rds, appid, sender)
-    content = push_content(sender_name, obj["content"])
+
+    content = ''
+    try:
+        c = json.loads(obj['content'])
+        no_push = c.get('no_push', False)
+        content = c.get('push_text')
+    except ValueError:
+        pass
+
+    if not content:
+        content = push_content(sender_name, obj["content"])
+
+    if no_push:
+        return
 
     extra = {}
     extra["sender"] = sender
