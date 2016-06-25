@@ -183,15 +183,92 @@ def handle_im_message(msg):
         else:
             logging.info("uid:%d has't device token", receiver)
 
+def handle_group_message(msg):
+    obj = json.loads(msg)
+    if not obj.has_key("appid") or \
+       not obj.has_key("sender") or \
+       not obj.has_key("receivers") or \
+       not obj.has_key("content") or \
+       not obj.has_key("group_id"):
+        logging.warning("invalid push msg:%s", msg)
+        return
+
+    logging.debug("group push msg:%s", msg)
+
+    appid = obj["appid"]
+    sender = obj["sender"]
+    receivers = obj["receivers"]
+    group_id = obj["group_id"]
+
+    sender_name = User.get_user_name(rds, appid, sender)
+
+    content = ''
+    try:
+        c = json.loads(obj['content'])
+        no_push = c.get('no_push', False)
+        content = c.get('push_text')
+    except ValueError:
+        pass
+
+    if not content:
+        content = push_content(sender_name, obj["content"])
+
+    if no_push:
+        return
+
+    extra = {}
+    extra["sender"] = sender
+    
+    if group_id:
+        extra["group_id"] = group_id
+ 
+
+    certs = config.PUSH_CERTS
+    for bundle_id in certs:
+        logging.debug("bundle id:%s", bundle_id)
+        cert = certs[bundle_id]
+        appname = cert['name']
+
+        apns_users = []
+        jp_users = []
+
+        for receiver in receivers:
+            u = User.get_bundle_user(rds, appid, receiver, bundle_id)
+            if u is None:
+                logging.info("uid:%d nonexist", receiver)
+                continue
+             
+            #找出最近绑定的token
+            ts = max(u.apns_timestamp, u.jp_timestamp)
+             
+            if u.apns_device_token and u.apns_timestamp == ts:
+                apns_users.append(u)
+            elif u.jp_device_token and u.jp_timestamp == ts:
+                jp_users.append(u)
+            else:
+                logging.info("uid:%d has't device token", receiver)
+
+        for u in apns_users:
+            ios_push(bundle_id, u.apns_device_token, content, u.unread + 1, extra)
+            User.set_bundle_user_unread(rds, appid, receiver, bundle_id, u.unread+1)
+
+        tokens = []
+        for u in jp_users:
+            tokens.append(u.jp_device_token)
+        if tokens:
+            JGPush.push(bundle_id, appname, tokens, content)
+
 
 def receive_offline_message():
     while True:
-        item = rds.blpop(("push_queue",))
+        item = rds.blpop(("push_queue","group_push_queue"))
         if not item:
             continue
         q, msg = item
         if q == "push_queue":
             handle_im_message(msg)
+        elif q == "group_push_queue":
+            handle_group_message(msg)
         else:
             logging.warning("unknown queue:%s", q)
 
