@@ -28,13 +28,14 @@ class JGPush:
         return app
 
     @classmethod
-    def send(cls, app_key, app_secret, device_tokens, title, content):
+    def send(cls, app_key, app_secret, device_tokens, title, content, extra):
         obj = {
             "platform":["android"],
             "notification": {
                 "android": {
                     "alert": content,
                     "title": title,
+                    "extras": extra
                 },
             },
             "audience" : {
@@ -57,7 +58,7 @@ class JGPush:
         
 
     @classmethod
-    def push(cls, bundle_id, appname, tokens, content):
+    def push(cls, bundle_id, appname, tokens, content, extra):
         app = cls.get_app(bundle_id)
         if app is None:
             logging.warning("can't read jg app secret")
@@ -69,7 +70,7 @@ class JGPush:
         logging.debug("send jg push:%s", content)
         for i in range(0, len(tokens), 1000):
             t = tokens[i:i+1000]
-            cls.send(jg_app_key, jg_app_secret, t, appname, content)
+            cls.send(jg_app_key, jg_app_secret, t, appname, content, extra)
         
     
 if __name__ == "__main__":
@@ -78,5 +79,5 @@ if __name__ == "__main__":
     APP_SECRET = ""
     token = "18071adc030e776c98d"
 
-    JGPush.send(APP_KEY, APP_SECRET, [token], "test", "测试极光推送")
+    JGPush.send(APP_KEY, APP_SECRET, [token], "test", "测试极光推送", {})
 

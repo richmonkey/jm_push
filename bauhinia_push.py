@@ -136,15 +136,17 @@ def handle_im_message(msg):
     appid = obj["appid"]
     sender = obj["sender"]
     receiver = obj["receiver"]
-    group_id = obj["group_id"] if obj.has_key("group_id") else 0
 
     sender_name = User.get_user_name(rds, appid, sender)
 
     content = ''
+    no_push = False
+    extra = {}
     try:
         c = json.loads(obj['content'])
         no_push = c.get('no_push', False)
-        content = c.get('push_text')
+        extra = c.get('push_extra', {})
+        content = c.get('push_text', '')
     except ValueError:
         pass
 
@@ -154,12 +156,7 @@ def handle_im_message(msg):
     if no_push:
         return
 
-    extra = {}
     extra["sender"] = sender
-    
-    if group_id:
-        extra["group_id"] = group_id
- 
 
     certs = config.PUSH_CERTS
     for bundle_id in certs:
@@ -179,7 +176,7 @@ def handle_im_message(msg):
             ios_push(bundle_id, u.apns_device_token, content, u.unread + 1, extra)
             User.set_bundle_user_unread(rds, appid, receiver, bundle_id, u.unread+1)
         elif u.jp_device_token and u.jp_timestamp == ts:
-            JGPush.push(bundle_id, appname, [u.jp_device_token], content)
+            JGPush.push(bundle_id, appname, [u.jp_device_token], content, extra)
         else:
             logging.info("uid:%d has't device token", receiver)
 
@@ -203,6 +200,7 @@ def handle_group_message(msg):
     sender_name = User.get_user_name(rds, appid, sender)
 
     content = ''
+    no_push = False
     try:
         c = json.loads(obj['content'])
         no_push = c.get('no_push', False)
