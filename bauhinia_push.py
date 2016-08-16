@@ -217,8 +217,8 @@ def handle_voip_message(msg):
     appname = config.APPNAME
     if u.apns_device_token and u.apns_timestamp == ts:
         sound = "apns.caf"
-        badge = u.unread
-        IOSPush.push(appid, u.apns_device_token, content, badge, sound, {})
+        IOSPush.push(appid, u.apns_device_token, content, u.unread+1, sound, {})
+        User.set_user_unread(rds, appid, receiver, u.unread+1)
     elif u.gcm_device_token and u.gcm_timestamp == ts:
         GCMPush.push(appid, appname, u.gcm_device_token, content)
     elif u.jp_device_token and u.jp_timestamp == ts:
@@ -230,6 +230,7 @@ def handle_voip_message(msg):
 def system_message_content(body):
     try:
         obj = json.loads(body)
+        obj = json.loads(obj['content'])
         if obj['operation'] == "Request":
             src_uid = int(obj['sourceUserId'])
             sender_name = obj.get('sourceUserName', '')
@@ -240,7 +241,13 @@ def system_message_content(body):
                 content = "你收到一条好友请求"
             return content
         elif obj['operation'] == 'OfficialAccountNotice':
-            return obj['tips']
+            sender_name = obj.get('sourceOfficialAccountName', '')
+            if sender_name:
+                sender_name = sender_name.decode("utf8")
+                content = "%s:%s"%(sender_name, obj['tips'])
+            else:
+                content = "你收到了一条消息"
+            return content
 
     except ValueError:
         return None
@@ -253,7 +260,7 @@ def handle_system_message(msg):
     body = obj["content"]
 
     appname = config.APPNAME
-
+    logging.debug("system message:%s", msg)
     u = User.get_user(rds, appid, receiver)
     if u is None:
         logging.info("uid:%d nonexist", receiver)
@@ -270,8 +277,8 @@ def handle_system_message(msg):
              u.mi_timestamp, u.hw_timestamp, u.gcm_timestamp, u.jp_timestamp)
 
     if u.apns_device_token and u.apns_timestamp == ts:
-        sound = "apns.caf"
-        IOSPush.push(appid, u.apns_device_token, content, u.unread, sound, {})
+        sound = "default"
+        IOSPush.push(appid, u.apns_device_token, content, u.unread+1, sound, {})
         User.set_user_unread(rds, appid, receiver, u.unread+1)
     elif u.gcm_device_token and u.gcm_timestamp == ts:
         GCMPush.push(appid, appname, u.gcm_device_token, content)
