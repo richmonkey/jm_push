@@ -217,7 +217,7 @@ def handle_voip_message(msg):
     appname = config.APPNAME
     if u.apns_device_token and u.apns_timestamp == ts:
         sound = "apns.caf"
-        IOSPush.push(appid, u.apns_device_token, content, u.unread+1, sound, {})
+        IOSPush.push(appid, u.apns_device_token, content, sound, u.unread+1, {})
         User.set_user_unread(rds, appid, receiver, u.unread+1)
     elif u.gcm_device_token and u.gcm_timestamp == ts:
         GCMPush.push(appid, appname, u.gcm_device_token, content)
@@ -278,7 +278,7 @@ def handle_system_message(msg):
 
     if u.apns_device_token and u.apns_timestamp == ts:
         sound = "default"
-        IOSPush.push(appid, u.apns_device_token, content, u.unread+1, sound, {})
+        IOSPush.push(appid, u.apns_device_token, content, sound, u.unread+1, {})
         User.set_user_unread(rds, appid, receiver, u.unread+1)
     elif u.gcm_device_token and u.gcm_timestamp == ts:
         GCMPush.push(appid, appname, u.gcm_device_token, content)
