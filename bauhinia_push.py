@@ -15,7 +15,7 @@ from huawei import HuaWeiPush
 from gcm import GCMPush
 from jgpush import JGPush
 
-rds = redis.StrictRedis(host=config.REDIS_HOST, port=config.REDIS_PORT, db=config.REDIS_DB)
+rds = redis.StrictRedis(host=config.REDIS_HOST, port=config.REDIS_PORT, password=config.REDIS_PASSWORD, db=config.REDIS_DB)
 
 class User(object):
     def __init__(self):
