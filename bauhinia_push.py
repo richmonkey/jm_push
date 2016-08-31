@@ -15,7 +15,7 @@ from huawei import HuaWeiPush
 from gcm import GCMPush
 from jgpush import JGPush
 
-rds = redis.StrictRedis(host=config.REDIS_HOST, port=config.REDIS_PORT, db=config.REDIS_DB)
+rds = redis.StrictRedis(host=config.REDIS_HOST, port=config.REDIS_PORT, password=config.REDIS_PASSWORD, db=config.REDIS_DB)
 
 class User(object):
     def __init__(self):
@@ -117,16 +117,12 @@ def handle_im_message(msg):
     elif obj.has_key("receivers"):
         receivers = obj["receivers"]
         
-    group_id = obj["group_id"] if obj.has_key("group_id") else 0
 
     sender_name = User.get_user_name(rds, appid, sender)
     content = push_content(sender_name, obj["content"])
 
     extra = {}
     extra["sender"] = sender
-    
-    if group_id:
-        extra["group_id"] = group_id
 
     appname = config.APPNAME
 
@@ -142,12 +138,6 @@ def handle_im_message(msg):
         if u is None:
             logging.info("uid:%d nonexist", receiver)
             continue
-         
-        if group_id:
-            quiet = User.get_user_notification_setting(rds, appid, receiver, group_id)
-            if quiet:
-                logging.info("uid:%d group id:%d is in quiet mode", receiver, group_id)
-                continue
 
         #找出最近绑定的token
         ts = max(u.apns_timestamp, u.xg_timestamp, u.ng_timestamp, 
@@ -190,6 +180,91 @@ def handle_im_message(msg):
         tokens.append(u.jp_device_token)
     if tokens:
         JGPush.push(appid, appname, tokens, content)
+
+
+def handle_group_message(msg):
+    obj = json.loads(msg)
+    if not obj.has_key("appid") or not obj.has_key("sender") or \
+       (not obj.has_key("receiver") and not obj.has_key("receivers")):
+        logging.warning("invalid push msg:%s", msg)
+        return
+
+    logging.debug("push group msg:%s", msg)
+
+    appid = obj["appid"]
+    sender = obj["sender"]
+    receivers = obj["receivers"]
+    group_id = obj["group_id"]
+
+    sender_name = User.get_user_name(rds, appid, sender)
+    content = push_content(sender_name, obj["content"])
+
+    extra = {}
+    extra["sender"] = sender
+    extra["group_id"] = group_id
+
+    appname = config.APPNAME
+
+    apns_users = []
+    jp_users = []
+    xg_users = []
+    hw_users = []
+    gcm_users = []
+    mi_users = []
+
+    for receiver in receivers:
+        u = User.get_user(rds, appid, receiver)
+        if u is None:
+            logging.info("uid:%d nonexist", receiver)
+            continue
+
+        quiet = User.get_user_notification_setting(rds, appid, receiver, group_id)
+        if quiet:
+            logging.info("uid:%d group id:%d is in quiet mode", receiver, group_id)
+            continue
+
+        #找出最近绑定的token
+        ts = max(u.apns_timestamp, u.xg_timestamp, u.ng_timestamp, 
+                 u.mi_timestamp, u.hw_timestamp, u.gcm_timestamp, u.jp_timestamp)
+
+        if u.apns_device_token and u.apns_timestamp == ts:
+            apns_users.append(u)
+        elif u.xg_device_token and u.xg_timestamp == ts:
+            xg_users.append(u)
+        elif u.mi_device_token and u.mi_timestamp == ts:
+            mi_users.append(u)
+        elif u.hw_device_token and u.hw_timestamp == ts:
+            hw_users.append(u)
+        elif u.gcm_device_token and u.gcm_timestamp == ts:
+            gcm_users.append(u)
+        elif u.jp_device_token and u.jp_timestamp == ts:
+            jp_users.append(u)
+        else:
+            logging.info("uid:%d has't device token", receiver)
+            continue
+
+    for u in xg_users:
+        XGPush.push(appid, token, content, extra)
+
+    for u in hw_users:
+        HuaWeiPush.push(appid, appname, u.hw_device_token, content)
+
+    for u in gcm_users:
+        GCMPush.push(appid, appname, u.gcm_device_token, content)
+
+    for u in mi_users:
+        MiPush.push(appid, appname, u.mi_device_token, content)
+    
+    for u in apns_users:
+        ios_push(appid, u.apns_device_token, content, u.unread + 1, extra)
+        User.set_user_unread(rds, appid, receiver, u.unread+1)
+
+    tokens = []
+    for u in jp_users:
+        tokens.append(u.jp_device_token)
+    if tokens:
+        JGPush.push(appid, appname, tokens, content)
+
 
 
 def handle_voip_message(msg):
@@ -290,12 +365,14 @@ def handle_system_message(msg):
 
 def receive_offline_message():
     while True:
-        item = rds.blpop(("push_queue", "voip_push_queue", "system_push_queue"))
+        item = rds.blpop(("push_queue", "group_push_queue", "voip_push_queue", "system_push_queue"))
         if not item:
             continue
         q, msg = item
         if q == "push_queue":
             handle_im_message(msg)
+        elif q == "group_push_queue":
+            handle_group_message(msg)
         elif q == "voip_push_queue":
             handle_voip_message(msg)
         elif q == "system_push_queue":
